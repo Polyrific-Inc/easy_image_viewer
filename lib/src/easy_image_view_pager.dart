@@ -17,6 +17,7 @@ class EasyImageViewPager extends StatefulWidget {
   final EasyImageProvider easyImageProvider;
   final PageController pageController;
   final bool doubleTapZoomable;
+  final bool infinitelyScrollable;
 
   /// Callback for when the scale has changed, only invoked at the end of
   /// an interaction.
@@ -25,13 +26,14 @@ class EasyImageViewPager extends StatefulWidget {
   /// Create new instance, using the [easyImageProvider] to populate the [PageView],
   /// and the [pageController] to control the initial image index to display.
   /// The optional [doubleTapZoomable] boolean defaults to false and allows double tap to zoom.
-  const EasyImageViewPager(
-      {Key? key,
-      required this.easyImageProvider,
-      required this.pageController,
-      this.doubleTapZoomable = false,
-      this.onScaleChanged})
-      : super(key: key);
+  const EasyImageViewPager({
+    Key? key,
+    required this.easyImageProvider,
+    required this.pageController,
+    this.doubleTapZoomable = false,
+    this.onScaleChanged,
+    this.infinitelyScrollable = false,
+  }) : super(key: key);
 
   @override
   State<EasyImageViewPager> createState() => _EasyImageViewPagerState();
@@ -47,14 +49,16 @@ class _EasyImageViewPagerState extends State<EasyImageViewPager> {
           ? const PageScrollPhysics()
           : const NeverScrollableScrollPhysics(),
       key: GlobalObjectKey(widget.easyImageProvider),
-      itemCount: widget.easyImageProvider.imageCount,
+      itemCount: widget.infinitelyScrollable
+          ? null
+          : widget.easyImageProvider.imageCount,
       controller: widget.pageController,
       scrollBehavior: MouseEnabledScrollBehavior(),
       itemBuilder: (context, index) {
-        final image = widget.easyImageProvider.imageBuilder(context, index);
-        return EasyImageView(
-          key: Key('easy_image_view_$index'),
-          imageProvider: image,
+        final pageIndex = _getPageIndex(index);
+        return EasyImageView.imageWidget(
+          widget.easyImageProvider.imageWidgetBuilder(context, pageIndex),
+          key: Key('easy_image_view_$pageIndex'),
           doubleTapZoomable: widget.doubleTapZoomable,
           onScaleChanged: (scale) {
             if (widget.onScaleChanged != null) {
@@ -68,5 +72,15 @@ class _EasyImageViewPagerState extends State<EasyImageViewPager> {
         );
       },
     );
+  }
+
+  // If the infinitelyScrollable true, the page number is calculated modulo the
+  // total number of images, effectively creating a looping carousel effect.
+  // Otherwise, the index is returned as is.
+  int _getPageIndex(int index) {
+    if (widget.infinitelyScrollable) {
+      return index % widget.easyImageProvider.imageCount;
+    }
+    return index;
   }
 }

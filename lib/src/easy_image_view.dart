@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 /// A full-sized view that displays the given image, supporting pinch & zoom
 class EasyImageView extends StatefulWidget {
-  /// The image to display
-  final ImageProvider imageProvider;
+  /// The image widget to display
+  final Widget imageWidget;
 
   /// Minimum scale factor
   final double minScale;
@@ -18,11 +18,28 @@ class EasyImageView extends StatefulWidget {
   /// an interaction.
   final void Function(double)? onScaleChanged;
 
+  /// Create a new instance that accepts an [ImageProvider]
+  EasyImageView({
+    Key? key,
+    required ImageProvider imageProvider,
+    double minScale = 1.0,
+    double maxScale = 5.0,
+    bool doubleTapZoomable = false,
+    void Function(double)? onScaleChanged,
+  }) : this.imageWidget(
+          Image(image: imageProvider),
+          key: key,
+          minScale: minScale,
+          maxScale: maxScale,
+          doubleTapZoomable: doubleTapZoomable,
+          onScaleChanged: onScaleChanged,
+        );
+
   /// Create a new instance
   /// The optional [doubleTapZoomable] boolean defaults to false and allows double tap to zoom.
-  const EasyImageView({
+  const EasyImageView.imageWidget(
+    this.imageWidget, {
     Key? key,
-    required this.imageProvider,
     this.minScale = 1.0,
     this.maxScale = 5.0,
     this.doubleTapZoomable = false,
@@ -52,7 +69,6 @@ class _EasyImageViewState extends State<EasyImageView>
 
   @override
   Widget build(BuildContext context) {
-    final image = Image(image: widget.imageProvider);
     return SizedBox.expand(
         key: const Key('easy_image_sized_box'),
         child: InteractiveViewer(
@@ -64,8 +80,8 @@ class _EasyImageViewState extends State<EasyImageView>
               ? GestureDetector(
                   onDoubleTapDown: _handleDoubleTapDown,
                   onDoubleTap: _handleDoubleTap,
-                  child: image)
-              : image,
+                  child: widget.imageWidget)
+              : widget.imageWidget,
           onInteractionEnd: (scaleEndDetails) {
             double scale = _transformationController.value.getMaxScaleOnAxis();
 
