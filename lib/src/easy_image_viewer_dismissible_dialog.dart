@@ -13,13 +13,13 @@ class EasyImageViewerDismissibleDialog extends StatefulWidget {
   final bool immersive;
   final void Function(int)? onPageChanged;
   final void Function(int)? onViewerDismissed;
-  final bool useSafeArea;
   final bool swipeDismissible;
   final bool doubleTapZoomable;
   final Color backgroundColor;
   final String closeButtonTooltip;
   final Color closeButtonColor;
   final Widget? closeWidget;
+  final bool infinitelyScrollable;
 
   /// Refer to [showImageViewerPager] for the arguments
   const EasyImageViewerDismissibleDialog(this.imageProvider,
@@ -27,10 +27,10 @@ class EasyImageViewerDismissibleDialog extends StatefulWidget {
       this.immersive = true,
       this.onPageChanged,
       this.onViewerDismissed,
-      this.useSafeArea = false,
       this.swipeDismissible = false,
       this.doubleTapZoomable = false,
       this.closeWidget,
+      this.infinitelyScrollable = false,
       required this.backgroundColor,
       required this.closeButtonTooltip,
       required this.closeButtonColor})
@@ -59,7 +59,7 @@ class _EasyImageViewerDismissibleDialogState extends State<EasyImageViewerDismis
     _pageController = PageController(initialPage: widget.imageProvider.initialIndex);
     if (widget.onPageChanged != null) {
       _internalPageChangeListener = () {
-        widget.onPageChanged!(_pageController.page?.round() ?? 0);
+        widget.onPageChanged!(_getCurrentPage());
       };
       _pageController.addListener(_internalPageChangeListener!);
     }
@@ -76,6 +76,8 @@ class _EasyImageViewerDismissibleDialogState extends State<EasyImageViewerDismis
 
   @override
   Widget build(BuildContext context) {
+    // Remove this once we release v2.0.0 and can bump the minimum Flutter version to 3.13.0
+    // ignore: deprecated_member_use
     final popScopeAwareDialog = WillPopScope(
         onWillPop: () async {
           _handleDismissal();
@@ -93,6 +95,8 @@ class _EasyImageViewerDismissibleDialogState extends State<EasyImageViewerDismis
                   easyImageProvider: widget.imageProvider,
                   pageController: _pageController,
                   doubleTapZoomable: widget.doubleTapZoomable,
+                    infinitelyScrollable: widget.infinitelyScrollable,
+
                   onScaleChanged: (scale) {
                     setState(() {
                       _dismissDirection = scale <= 1.0 ? DismissDirection.down : DismissDirection.none;
@@ -120,7 +124,7 @@ class _EasyImageViewerDismissibleDialogState extends State<EasyImageViewerDismis
                           child: widget.closeWidget!,
                         ))
             ])));
-
+                    
     if (widget.swipeDismissible) {
       return Dismissible(
           direction: _dismissDirection,
@@ -145,7 +149,7 @@ class _EasyImageViewerDismissibleDialogState extends State<EasyImageViewerDismis
   // through the "x" close button, or through swipe-to-dismiss.
   void _handleDismissal() {
     if (widget.onViewerDismissed != null) {
-      widget.onViewerDismissed!(_pageController.page?.round() ?? 0);
+      widget.onViewerDismissed!(_getCurrentPage());
     }
 
     if (widget.immersive) {
@@ -154,5 +158,16 @@ class _EasyImageViewerDismissibleDialogState extends State<EasyImageViewerDismis
     if (_internalPageChangeListener != null) {
       _pageController.removeListener(_internalPageChangeListener!);
     }
+  }
+
+  // Returns the current page number.
+  // If the infinitelyScrollable true, the page number is calculated modulo the
+  // total number of images, effectively creating a looping carousel effect.
+  int _getCurrentPage() {
+    var currentPage = _pageController.page?.round() ?? 0;
+    if (widget.infinitelyScrollable) {
+      currentPage = currentPage % widget.imageProvider.imageCount;
+    }
+    return currentPage;
   }
 }

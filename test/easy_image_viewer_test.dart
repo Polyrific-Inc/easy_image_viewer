@@ -14,7 +14,7 @@ void main() {
       bool dismissed = false;
 
       await tester.runAsync(() async {
-        redImageProvider = await createColorImage(Colors.red);
+        redImageProvider = await createColorImageProvider(Colors.red);
       });
 
       final dialogFuture =
@@ -46,7 +46,7 @@ void main() {
       final context = await createTestBuildContext(tester);
 
       await tester.runAsync(() async {
-        imageProvider = await createColorImage(Colors.amber);
+        imageProvider = await createColorImageProvider(Colors.amber);
       });
 
       showImageViewer(context, imageProvider,
@@ -83,7 +83,7 @@ void main() {
           Colors.teal
         ];
         imageProviders =
-            await Future.wait(colors.map((color) => createColorImage(color)));
+            await Future.wait(colors.map((color) => createColorImageProvider(color)));
       });
 
       final multiImageProvider = MultiImageProvider(imageProviders);
@@ -124,6 +124,80 @@ void main() {
       expect(pageOnDismissal, 2);
     });
 
+
+    testWidgets('should have a PageView of infinite images and invoke callbacks',
+        (WidgetTester tester) async {
+      List<ImageProvider> imageProviders = List.empty(growable: true);
+      final context = await createTestBuildContext(tester);
+      bool dismissed = false;
+      int currentPage = -1;
+      int pageOnDismissal = -1;
+
+      await tester.runAsync(() async {
+        const colors = [
+          Colors.amber,
+          Colors.red,
+          Colors.green,
+          Colors.blue,
+          Colors.teal
+        ];
+        imageProviders =
+            await Future.wait(colors.map((color) => createColorImageProvider(color)));
+      });
+
+      final multiImageProvider = MultiImageProvider(imageProviders);
+
+      final dialogFuture = showImageViewerPager(context, multiImageProvider,
+          onPageChanged: (page) {
+        currentPage = page;
+      }, onViewerDismissed: (page) {
+        dismissed = true;
+        pageOnDismissal = page;
+      }, infinitelyScrollable: true);
+      await tester.pumpAndSettle();
+
+      // Create the Finders.
+      final pageViewFinder = find.byKey(GlobalObjectKey(multiImageProvider));
+      final closeButtonFinder = find.byIcon(Icons.close);
+
+      // Check existence
+      expect(pageViewFinder, findsOneWidget);
+      expect(closeButtonFinder, findsOneWidget);
+
+      // Swipe to second image
+      await tester.drag(pageViewFinder, const Offset(-501.0, 0.0));
+      await tester.pumpAndSettle();
+      expect(currentPage, 1);
+
+      // Swipe to third image
+      await tester.drag(pageViewFinder, const Offset(-501.0, 0.0));
+      await tester.pumpAndSettle();
+      expect(currentPage, 2);
+
+      // Swipe to fourth image
+      await tester.drag(pageViewFinder, const Offset(-501.0, 0.0));
+      await tester.pumpAndSettle();
+      expect(currentPage, 3);
+
+      // Swipe to fifth image
+      await tester.drag(pageViewFinder, const Offset(-501.0, 0.0));
+      await tester.pumpAndSettle();
+      expect(currentPage, 4);
+
+      // Swipe to first image
+      await tester.drag(pageViewFinder, const Offset(-501.0, 0.0));
+      await tester.pumpAndSettle();
+      expect(currentPage, 0);
+
+      // Dismiss the dialog
+      await tester.tap(closeButtonFinder);
+
+      await dialogFuture;
+
+      expect(dismissed, true);
+      expect(pageOnDismissal, 0);
+    });
+
     testWidgets('should invoke callbacks when dismissed with a swipe',
         (WidgetTester tester) async {
       List<ImageProvider> imageProviders = List.empty(growable: true);
@@ -140,7 +214,7 @@ void main() {
           Colors.teal
         ];
         imageProviders =
-            await Future.wait(colors.map((color) => createColorImage(color)));
+            await Future.wait(colors.map((color) => createColorImageProvider(color)));
       });
 
       final multiImageProvider = MultiImageProvider(imageProviders);
@@ -184,7 +258,7 @@ void main() {
           Colors.teal
         ];
         imageProviders =
-            await Future.wait(colors.map((color) => createColorImage(color)));
+            await Future.wait(colors.map((color) => createColorImageProvider(color)));
       });
 
       final multiImageProvider =
@@ -219,6 +293,57 @@ void main() {
       expect(pageOnDismissal, 2);
     });
 
+    testWidgets('should respect the initialIndex when infinitelyScrollable is true',
+        (WidgetTester tester) async {
+      List<ImageProvider> imageProviders = List.empty(growable: true);
+      final context = await createTestBuildContext(tester);
+      bool dismissed = false;
+      int pageOnDismissal = -1;
+
+      await tester.runAsync(() async {
+        const colors = [
+          Colors.amber,
+          Colors.red,
+          Colors.green,
+          Colors.blue,
+          Colors.teal
+        ];
+        imageProviders =
+            await Future.wait(colors.map((color) => createColorImageProvider(color)));
+      });
+
+      final multiImageProvider =
+          MultiImageProvider(imageProviders, initialIndex: 2);
+
+      final dialogFuture = showImageViewerPager(context, multiImageProvider,
+          onViewerDismissed: (page) {
+        dismissed = true;
+        pageOnDismissal = page;
+      },infinitelyScrollable: true);
+      await tester.pumpAndSettle();
+
+      // Create the Finders.
+      final closeButtonFinder = find.byIcon(Icons.close);
+
+      // Check default closeButtonColor
+      IconButton closeButton =
+          tester.firstWidget(find.widgetWithIcon(IconButton, Icons.close));
+      expect(closeButton.color, Colors.white);
+
+      // Check default dialog backgroundColor
+      Dialog dialog = tester
+          .firstWidget(find.byWidgetPredicate((widget) => widget is Dialog));
+      expect(dialog.backgroundColor, Colors.black);
+
+      // Dismiss the dialog
+      await tester.tap(closeButtonFinder);
+
+      await dialogFuture;
+
+      expect(dismissed, true);
+      expect(pageOnDismissal, 2);
+    });
+
     testWidgets('should respect the backgroundColor and closeButtonColor',
         (WidgetTester tester) async {
       List<ImageProvider> imageProviders = List.empty(growable: true);
@@ -227,7 +352,7 @@ void main() {
       await tester.runAsync(() async {
         const colors = [Colors.amber];
         imageProviders =
-            await Future.wait(colors.map((color) => createColorImage(color)));
+            await Future.wait(colors.map((color) => createColorImageProvider(color)));
       });
 
       final multiImageProvider = MultiImageProvider(imageProviders);
